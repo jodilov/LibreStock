@@ -8,6 +8,11 @@ import javafx.scene.control.Button;
 import javafx.scene.control.MenuItem;
 import javafx.stage.Stage;
 
+import javafx.scene.control.TextField;
+import javafx.scene.control.Alert;
+import java.sql.SQLException;
+import java.util.Map;
+
 import java.io.IOException;
 
 public class HelloController {
@@ -16,22 +21,65 @@ public class HelloController {
     @FXML private MenuItem loginquit_menu;
     @FXML private MenuItem loginAboutLibre_menu;
 
-    @FXML
-    private void onLoginButtonClick() throws IOException{
-        System.out.println("User Logged In...");
-        //Uncomment if you want login to go to standard user view
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("admindash-view.fxml"));
 
-        //If checking standard user view, make sure to comment the next line out so there isn't a conflict
-        //FXMLLoader loader = new FXMLLoader(getClass().getResource("admindash-view.fxml"));
-        Parent root = loader.load();
+    @FXML private TextField loginusername_textfield;
+    @FXML private TextField loginpassword_textfield;
 
-        Stage stage = (Stage)login_button.getScene().getWindow();
-        Scene scene = new Scene(root);
-
-        stage.setScene(scene);
-        stage.show();
+    private void showError(String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("Login Error");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
+  
+    @FXML
+    private void onLoginButtonClick() {
+        String username = loginusername_textfield.getText();
+        String password = loginpassword_textfield.getText();
+
+        if (username == null || username.isBlank() ||
+            password == null || password.isBlank()) {
+            showError("Please enter both username and password.");
+            return;
+        }
+
+        try {
+            DbAccess db = new DbAccess();
+            Map<String, Object> userRow = db.findUserByCredentials(username, password);
+
+            if (userRow == null) {
+                showError("Invalid username or password.");
+                return;
+            }
+
+            // Decide which dashboard to load based on role
+            String role = (String) userRow.get("role");
+            FXMLLoader loader;
+
+            if ("AD".equalsIgnoreCase(role)) {
+                // Admin
+                loader = new FXMLLoader(getClass().getResource("admindash-view.fxml"));
+            } else {
+                // Standard user
+                loader = new FXMLLoader(getClass().getResource("userdash-view.fxml"));
+            }
+
+            Parent root = loader.load();
+            Stage stage = (Stage) login_button.getScene().getWindow();
+            Scene scene = new Scene(root);
+            stage.setScene(scene);
+            stage.show();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            showError("Database error: " + e.getMessage());
+        } catch (IOException e) {
+            e.printStackTrace();
+            showError("Error loading dashboard: " + e.getMessage());
+        }
+    }
+
     @FXML
     private void onFirstTimeButtonClick() throws IOException{
         System.out.println("First Time User Option Clicked...");
