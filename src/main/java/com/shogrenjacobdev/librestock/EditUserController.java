@@ -9,12 +9,43 @@ import javafx.scene.control.MenuItem;
 import javafx.stage.Stage;
 import java.io.IOException;
 
+import javafx.scene.control.TextField;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.Alert;
+import java.sql.SQLException;
+import java.util.Map;
+
+
 public class EditUserController {
     Stage stage;
     @FXML private Button edituserreturn_button;
     @FXML private Button editusersubmit_button; // saved for later even if not used currently
     @FXML private MenuItem edituserquit_menu;
     @FXML private MenuItem edituseraboutlibrestock_menu;
+
+    @FXML private TextField edituseruserID_textfield;
+    @FXML private TextField edituserusername_textfield;
+    @FXML private TextField edituserpassword_textfield;
+    @FXML private TextField edituserconfirmpassword_textfield;
+    @FXML private TextField edituserfirstname_textfield;
+    @FXML private TextField edituserlastname_textfield;
+    @FXML private CheckBox editusermakeadmin_check;
+
+    private void showError(String message) {
+    Alert alert = new Alert(Alert.AlertType.ERROR);
+    alert.setTitle("Error");
+    alert.setHeaderText(null);
+    alert.setContentText(message);
+    alert.showAndWait();
+}
+
+private void showInfo(String message) {
+    Alert alert = new Alert(Alert.AlertType.INFORMATION);
+    alert.setTitle("Success");
+    alert.setHeaderText(null);
+    alert.setContentText(message);
+    alert.showAndWait();
+}
 
     //Buttton UI Methods
     @FXML
@@ -31,10 +62,67 @@ public class EditUserController {
     }
 
     @FXML
-    private void editusersubmitButtonClick() throws IOException{
-        System.out.println("submitting account data fr fr");
-        /* put craaaaazy edit logic here later (some sort of edit user method) */
+    private void editusersubmitButtonClick() {
+        String idText     = edituseruserID_textfield.getText();
+        String username   = edituserusername_textfield.getText();
+        String password   = edituserpassword_textfield.getText();
+        String confirm    = edituserconfirmpassword_textfield.getText();
+        String firstName  = edituserfirstname_textfield.getText();
+        String lastName   = edituserlastname_textfield.getText();
+        boolean makeAdmin = editusermakeadmin_check.isSelected();
+    if (idText == null || idText.isBlank()) {
+        showError("User ID is required.");
+        return;
     }
+
+    int userId;
+    try {
+        userId = Integer.parseInt(idText);
+    } catch (NumberFormatException e) {
+        showError("User ID must be a number.");
+        return;
+    }
+
+    if (username == null || username.isBlank() ||
+        password == null || password.isBlank() ||
+        confirm == null || confirm.isBlank() ||
+        firstName == null || firstName.isBlank() ||
+        lastName == null || lastName.isBlank()) {
+
+        showError("All fields are required.");
+        return;
+    }
+
+    if (!password.equals(confirm)) {
+        showError("Password and Confirm Password do not match.");
+        return;
+    }
+
+    String role = makeAdmin ? "AD" : "US";
+
+    try {
+        DbAccess db = new DbAccess();
+
+        // Check user exists
+        Map<String, Object> row = db.getRowById(userId, "users");
+        if (row == null) {
+            showError("No user found with ID " + userId);
+            return;
+        }
+
+        String sql = "UPDATE users SET username = ?, password = ?, " +
+                     "firstName = ?, lastName = ?, role = ? WHERE userId = ?";
+
+        db.runQuery(sql, username, password, firstName, lastName, role, userId);
+
+        showInfo("User updated successfully!");
+
+    } catch (SQLException e) {
+        e.printStackTrace();
+        showError("Database error: " + e.getMessage());
+    }
+}
+
 
     // Menu Option UI Methods
         @FXML
